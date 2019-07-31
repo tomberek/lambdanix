@@ -1,5 +1,5 @@
 let
-  pkgs = import <nixos>{};
+  pkgs = import <nixpkgs>{};
   go-bootstrap = pkgs.callPackage ./bootstrap {};
   posix_openpt = pkgs.callPackage ./posix_openpt {};
   nixrewrite = pkgs.callPackage ./nixrewrite.nix {};

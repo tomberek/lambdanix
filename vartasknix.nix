@@ -3,9 +3,10 @@ nixrewrite,
 go-bootstrap,
 posix_openpt,
 fakechroot,
+pkgs,
 ...}:
 let
-  newnix = with import <nixos>{}; pkgs.nixUnstable.overrideAttrs ( old:{
+  newnix = pkgs.nixUnstable.overrideAttrs ( old:{
     prePatch=''
       substituteInPlace configure.ac --replace posix_fallocate strsignal
       substituteInPlace src/libutil/util.cc --replace options.dieWithParent 0

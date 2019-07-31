@@ -32,4 +32,4 @@ $CHROOT /tmp nix-store --import < /tmp/out.nar ; } \
 echo imported: $(cat /tmp/out.drv) >&2
 
 PATH=$PATH2 LD_LIBRARY_PATH=$LD_LIBRARY_PATH2 LD_PRELOAD=$LD_PRELOAD2 \
-$CHROOT /tmp nix-store -r $(cat /tmp/out.drv) --option sandbox false
+$CHROOT /tmp nix-store -r $(cat /tmp/out.drv)

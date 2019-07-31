@@ -1,15 +1,11 @@
-links := $(shell find . -maxdepth 1 -type l)
-runtime := bootstrap .cache .config relocated libfakechroot.so libfakeroot.so chroot myshell.sh posix_openpt.so
-contents := src
-
 .PHONY: create bundle update invoke
 
 create: function.zip
-	aws lambda create-function --function-name nix-runner --zip-file fileb://function.zip --runtime provided --role arn:aws:iam::230579579650:role/GG-testing --handler dummy
+	aws lambda create-function --function-name nix-runner --zip-file fileb://function.zip --runtime provided --role $(shell cat .arn) --handler dummy
 
 bundle: function.zip
 
-function.zip: ${links} ${runtime} ${contents}
+function.zip:
 	nix-build -o function.zip
 
 update: function.zip
@@ -21,3 +17,6 @@ invoke: out.nar
 
 out.nar:
 	nix-store --export $(nix-instantiate src/default.nix | xargs nix-store -qR) > out.nar
+
+clean:
+	rm -f function.zip result out.nar response.txt

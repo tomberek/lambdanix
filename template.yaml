@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Serverless Specification template describing your function.
+Resources:
+  tomtest:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: function.handler
+      Runtime: provided
+      CodeUri: .
+      Description: ''
+      MemorySize: 4096
+      Timeout: 100
+      Role: 'arn:aws:iam::230579579650:role/GG-testing'

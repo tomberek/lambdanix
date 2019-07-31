@@ -1,0 +1,83 @@
+From 4a00b60b849694200a5123f5216d553bbcdd2758 Mon Sep 17 00:00:00 2001
+From: Antoine Eiche <lewo@abesis.fr>
+Date: Fri, 1 Jun 2018 18:12:45 +0200
+Subject: [PATCH] Add a delay before killing the builder process
+
+Sometimes, the builder process is killed while the build succeeded. It
+seems this is because the signal is sent after file descriptors are
+closed (in `do_exit`) and before the process reaches the terminated
+state. This leads to a build failure (failed due to signal 9).
+
+To mitigate this issue, a delay (~10s) is introduced before sending the kill
+signal to the build process if it doesn't reach the terminated state.
+
+Fixes #2176
+---
+ src/libstore/build.cc |  8 +++++---
+ src/libutil/util.cc   | 19 +++++++++++++++++++
+ src/libutil/util.hh   |  3 +++
+ 3 files changed, 27 insertions(+), 3 deletions(-)
+
+diff --git a/src/libstore/build.cc b/src/libstore/build.cc
+index f70ab8108fd..1416a76017f 100644
+--- a/src/libstore/build.cc
++++ b/src/libstore/build.cc
+@@ -1489,9 +1489,11 @@ void DerivationGoal::buildDone()
+     /* Since we got an EOF on the logger pipe, the builder is presumed
+        to have terminated.  In fact, the builder could also have
+        simply have closed its end of the pipe, so just to be sure,
+-       kill it. */
+-    int status = hook ? hook->pid.kill() : pid.kill();
+-
++       kill it after a delay (~10s) if the process is still alive.*/
++    int status = hook ? hook->pid.waitWithTimeout() : pid.waitWithTimeout();
++    if (status == -1) {
++        status = hook ? hook->pid.kill() : pid.kill();
++    }
+     debug(format("builder process for '%1%' finished") % drvPath);
+ 
+     result.timesBuilt++;
+diff --git a/src/libutil/util.cc b/src/libutil/util.cc
+index 15962236ec6..763cc7ede33 100644
+--- a/src/libutil/util.cc
++++ b/src/libutil/util.cc
+@@ -787,6 +787,25 @@ int Pid::kill()
+ }
+ 
+ 
++int Pid::waitWithTimeout()
++{
++    assert(pid != -1);
++    int timeout = 10000;
++    int i = 9;
++    while (i--) {
++        int status;
++        int res = waitpid(pid, &status, WNOHANG);
++        if (res == pid) {
++            pid = -1;
++            return status;
++        }
++        checkInterrupt();
++        usleep(timeout);
++        timeout *= 2;
++    }
++    return -1;
++}
++
+ int Pid::wait()
+ {
+     assert(pid != -1);
+diff --git a/src/libutil/util.hh b/src/libutil/util.hh
+index 743d238611f..1b66be0b068 100644
+--- a/src/libutil/util.hh
++++ b/src/libutil/util.hh
+@@ -223,6 +223,9 @@ public:
+     operator pid_t();
+     int kill();
+     int wait();
++    /* Wait for about 10 sec and return the pid status or -1 if no
++       process changes occured */
++    int waitWithTimeout();
+ 
+     void setSeparatePG(bool separatePG);
+     void setKillSignal(int signal);
